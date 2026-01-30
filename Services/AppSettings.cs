@@ -77,9 +77,29 @@ public static class AppSettings
         set => SetString(data.TemplatePath, value, v => data.TemplatePath = v);
     }
 
+    public static int MaxParallelism
+    {
+        get => data.MaxParallelism <= 0 ? 1 : data.MaxParallelism;
+        set
+        {
+            var normalized = value <= 0 ? 1 : value;
+            if (data.MaxParallelism == normalized)
+            {
+                return;
+            }
+
+            data.MaxParallelism = normalized;
+            Save();
+        }
+    }
+
     public static IReadOnlyList<OutputPreset> Presets => data.Presets;
 
     public static IReadOnlyList<string> RecentFiles => data.RecentFiles;
+
+    public static IReadOnlyList<string> RecentOutputDirectories => data.RecentOutputDirectories;
+
+    public static IReadOnlyList<string> RecentTemplates => data.RecentTemplates;
 
     public static void SetPresets(IEnumerable<OutputPreset> presets)
     {
@@ -90,6 +110,18 @@ public static class AppSettings
     public static void SetRecentFiles(IEnumerable<string> files)
     {
         data.RecentFiles = files.ToList();
+        Save();
+    }
+
+    public static void SetRecentOutputDirectories(IEnumerable<string> directories)
+    {
+        data.RecentOutputDirectories = directories.ToList();
+        Save();
+    }
+
+    public static void SetRecentTemplates(IEnumerable<string> templates)
+    {
+        data.RecentTemplates = templates.ToList();
         Save();
     }
 
@@ -123,6 +155,8 @@ public static class AppSettings
             var loaded = JsonSerializer.Deserialize<SettingsData>(json) ?? new SettingsData();
             loaded.Presets ??= new List<OutputPreset>();
             loaded.RecentFiles ??= new List<string>();
+            loaded.RecentOutputDirectories ??= new List<string>();
+            loaded.RecentTemplates ??= new List<string>();
             return loaded;
         }
         catch

@@ -110,6 +110,24 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Shuffle" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="并行任务数" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="同时转换的最大任务数" />
+                        </StackPanel>
+                        <ComboBox
+                            Grid.Column="2"
+                            Width="120"
+                            ItemsSource="{x:Bind ViewModel.ParallelismOptions, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.MaxParallelism, Mode=TwoWay}" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <SymbolIcon Symbol="Folder" />
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="输出目录" />
@@ -135,6 +153,31 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Clock" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="最近输出目录" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="快速切换到常用目录" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <ComboBox
+                                Width="260"
+                                ItemsSource="{x:Bind ViewModel.RecentOutputDirectories, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedRecentOutputDirectory, Mode=TwoWay}" />
+                            <Button
+                                Command="{x:Bind ViewModel.ApplyRecentOutputDirectoryCommand}"
+                                Content="应用" />
+                            <Button
+                                Command="{x:Bind ViewModel.ClearRecentOutputDirectoriesCommand}"
+                                Content="清空" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <SymbolIcon Symbol="Edit" />
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="默认扩展名" />
@@ -145,6 +188,56 @@
                             Width="200"
                             Text="{x:Bind ViewModel.OutputExtension, Mode=TwoWay}"
                             PlaceholderText="docx" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Document" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="默认模板" />
+                            <TextBlock
+                                Style="{StaticResource SubtleText}"
+                                Text="{x:Bind ViewModel.TemplatePath, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <TextBox
+                                Width="240"
+                                Text="{x:Bind ViewModel.TemplatePath, Mode=TwoWay}"
+                                PlaceholderText="可选模板路径" />
+                            <Button
+                                Command="{x:Bind ViewModel.BrowseTemplateCommand}"
+                                Content="浏览" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Clock" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="最近模板" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="快速套用常用模板" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <ComboBox
+                                Width="260"
+                                ItemsSource="{x:Bind ViewModel.RecentTemplates, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedRecentTemplate, Mode=TwoWay}" />
+                            <Button
+                                Command="{x:Bind ViewModel.ApplyRecentTemplateCommand}"
+                                Content="应用" />
+                            <Button
+                                Command="{x:Bind ViewModel.ClearRecentTemplatesCommand}"
+                                Content="清空" />
+                        </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource SettingsRowDividerStyle}" />
                     <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
@@ -169,6 +262,10 @@
             <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
                     <TextBlock Style="{StaticResource SectionTitleText}" Text="日志" />
+                    <Button
+                        Command="{x:Bind ViewModel.ClearLogCommand}"
+                        HorizontalAlignment="Left"
+                        Content="清空日志" />
                     <TextBox
                         Height="180"
                         Text="{x:Bind ViewModel.LogText, Mode=OneWay}"

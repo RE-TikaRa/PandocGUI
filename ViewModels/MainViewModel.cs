@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using Microsoft.UI.Xaml;
 using PandocGUI.Models;
 using PandocGUI.Services;
@@ -24,6 +25,8 @@ public partial class MainViewModel : BaseViewModel
         {
             StartConversionCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(QueueCount));
+            RetryFailedCommand.NotifyCanExecuteChanged();
+            ClearCompletedCommand.NotifyCanExecuteChanged();
         };
     }
 
@@ -35,6 +38,7 @@ public partial class MainViewModel : BaseViewModel
 
     private bool isBusy;
     private bool isPandocReady;
+    private bool isQueuePaused;
     private string pandocPath = string.Empty;
     private string pandocStatus = "未检测";
     private string selectedInputFormat = "Auto";
@@ -48,10 +52,18 @@ public partial class MainViewModel : BaseViewModel
     private ConversionItem? selectedItem;
     private bool isDownloading;
     private double downloadProgress;
+    private TaskCompletionSource<bool>? pauseTcs;
+    private readonly object pauseLock = new();
+    private int maxParallelism = 1;
+    private string? selectedRecentOutputDirectory;
+    private string? selectedRecentTemplate;
     private OutputPreset? selectedPreset;
     private string? selectedRecentFile;
     private readonly ObservableCollection<OutputPreset> presets = new();
     private readonly ObservableCollection<string> recentFiles = new();
+    private readonly ObservableCollection<string> recentOutputDirectories = new();
+    private readonly ObservableCollection<string> recentTemplates = new();
+    private readonly ObservableCollection<int> parallelismOptions = new() { 1, 2, 3, 4, 5, 6, 7, 8 };
     private List<OutputPreset> customPresets = new();
 
     public bool IsBusy
@@ -78,6 +90,19 @@ public partial class MainViewModel : BaseViewModel
         }
     }
 
+    public bool IsQueuePaused
+    {
+        get => isQueuePaused;
+        set
+        {
+            if (SetProperty(ref isQueuePaused, value))
+            {
+                PauseQueueCommand.NotifyCanExecuteChanged();
+                ResumeQueueCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
     public string PandocPath
     {
         get => pandocPath;
@@ -94,6 +119,21 @@ public partial class MainViewModel : BaseViewModel
     {
         get => pandocStatus;
         set => SetProperty(ref pandocStatus, value);
+    }
+
+    public ObservableCollection<int> ParallelismOptions => parallelismOptions;
+
+    public int MaxParallelism
+    {
+        get => maxParallelism;
+        set
+        {
+            var normalized = Math.Clamp(value, 1, 8);
+            if (SetProperty(ref maxParallelism, normalized))
+            {
+                AppSettings.MaxParallelism = normalized;
+            }
+        }
     }
 
     public string SelectedInputFormat
@@ -156,6 +196,86 @@ public partial class MainViewModel : BaseViewModel
         }
     }
 
+    public string TemplatePath
+    {
+        get => templatePath;
+        set
+        {
+            if (SetProperty(ref templatePath, value))
+            {
+                OnTemplatePathChanged(value);
+            }
+        }
+    }
+
+    public ObservableCollection<OutputPreset> Presets => presets;
+
+    public OutputPreset? SelectedPreset
+    {
+        get => selectedPreset;
+        set
+        {
+            if (SetProperty(ref selectedPreset, value))
+            {
+                OnSelectedPresetChanged();
+            }
+        }
+    }
+
+    public string PresetName
+    {
+        get => presetName;
+        set
+        {
+            if (SetProperty(ref presetName, value))
+            {
+                SavePresetCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public ObservableCollection<string> RecentFiles => recentFiles;
+
+    public string? SelectedRecentFile
+    {
+        get => selectedRecentFile;
+        set
+        {
+            if (SetProperty(ref selectedRecentFile, value))
+            {
+                AddRecentSelectedCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public ObservableCollection<string> RecentOutputDirectories => recentOutputDirectories;
+
+    public string? SelectedRecentOutputDirectory
+    {
+        get => selectedRecentOutputDirectory;
+        set
+        {
+            if (SetProperty(ref selectedRecentOutputDirectory, value))
+            {
+                ApplyRecentOutputDirectoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public ObservableCollection<string> RecentTemplates => recentTemplates;
+
+    public string? SelectedRecentTemplate
+    {
+        get => selectedRecentTemplate;
+        set
+        {
+            if (SetProperty(ref selectedRecentTemplate, value))
+            {
+                ApplyRecentTemplateCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
     public string LogText
     {
         get => logText;
@@ -165,7 +285,13 @@ public partial class MainViewModel : BaseViewModel
     public ConversionItem? SelectedItem
     {
         get => selectedItem;
-        set => SetProperty(ref selectedItem, value);
+        set
+        {
+            if (SetProperty(ref selectedItem, value))
+            {
+                OpenOutputFolderCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     public bool IsDownloading
@@ -207,6 +333,12 @@ public partial class MainViewModel : BaseViewModel
         SelectedInputFormat = AppSettings.SelectedInputFormat ?? "Auto";
         OutputExtension = AppSettings.OutputExtension ?? SelectedOutputFormat;
         PandocPath = AppSettings.PandocPath ?? string.Empty;
+        TemplatePath = AppSettings.TemplatePath ?? string.Empty;
+        MaxParallelism = AppSettings.MaxParallelism;
+        LoadPresets();
+        LoadRecentFiles();
+        LoadRecentOutputDirectories();
+        LoadRecentTemplates();
         if (!AppSettings.HasLaunchedBefore)
         {
             AppSettings.HasLaunchedBefore = true;
@@ -372,6 +504,20 @@ public partial class MainViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private async Task BrowseTemplateAsync()
+    {
+        var picker = new FileOpenPicker();
+        picker.FileTypeFilter.Add("*");
+        InitializePicker(picker);
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+        {
+            TemplatePath = file.Path;
+        }
+    }
+
+    [RelayCommand]
     private void RemoveSelected()
     {
         if (SelectedItem is null)
@@ -386,6 +532,284 @@ public partial class MainViewModel : BaseViewModel
     private void ClearQueue()
     {
         Queue.Clear();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRetryFailed))]
+    private void RetryFailed()
+    {
+        foreach (var item in Queue.Where(item => item.Status == ConversionStatus.Failed))
+        {
+            item.Status = ConversionStatus.Pending;
+            item.Message = string.Empty;
+        }
+    }
+
+    private bool CanRetryFailed()
+        => !IsBusy && Queue.Any(item => item.Status == ConversionStatus.Failed);
+
+    [RelayCommand(CanExecute = nameof(CanClearCompleted))]
+    private void ClearCompleted()
+    {
+        var completed = Queue.Where(item => item.Status != ConversionStatus.Pending && item.Status != ConversionStatus.Running)
+            .ToList();
+        foreach (var item in completed)
+        {
+            Queue.Remove(item);
+        }
+    }
+
+    private bool CanClearCompleted()
+        => Queue.Any(item => item.Status != ConversionStatus.Pending && item.Status != ConversionStatus.Running);
+
+    [RelayCommand(CanExecute = nameof(CanOpenOutputFolder))]
+    private async Task OpenOutputFolderAsync()
+    {
+        if (SelectedItem is null || string.IsNullOrWhiteSpace(SelectedItem.OutputPath))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(SelectedItem.OutputPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return;
+        }
+
+        await Launcher.LaunchFolderPathAsync(directory);
+    }
+
+    private bool CanOpenOutputFolder()
+        => SelectedItem is not null && !string.IsNullOrWhiteSpace(SelectedItem.OutputPath);
+
+    [RelayCommand(CanExecute = nameof(CanApplyPreset))]
+    private void ApplyPreset()
+    {
+        if (SelectedPreset is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedPreset.OutputFormat))
+        {
+            SelectedOutputFormat = SelectedPreset.OutputFormat;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedPreset.OutputExtension))
+        {
+            OutputExtension = SelectedPreset.OutputExtension;
+        }
+
+        AdditionalArgs = SelectedPreset.AdditionalArgs ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(SelectedPreset.TemplatePath))
+        {
+            TemplatePath = SelectedPreset.TemplatePath;
+        }
+    }
+
+    private bool CanApplyPreset()
+        => SelectedPreset is not null;
+
+    [RelayCommand(CanExecute = nameof(CanSavePreset))]
+    private void SavePreset()
+    {
+        var name = PresetName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        var preset = new OutputPreset
+        {
+            Name = name,
+            OutputFormat = SelectedOutputFormat,
+            OutputExtension = OutputExtension,
+            AdditionalArgs = AdditionalArgs,
+            TemplatePath = TemplatePath,
+            IsBuiltIn = false
+        };
+
+        var existing = customPresets.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (existing is null)
+        {
+            customPresets.Add(preset);
+        }
+        else
+        {
+            existing.OutputFormat = preset.OutputFormat;
+            existing.OutputExtension = preset.OutputExtension;
+            existing.AdditionalArgs = preset.AdditionalArgs;
+            existing.TemplatePath = preset.TemplatePath;
+        }
+
+        AppSettings.SetPresets(customPresets);
+        LoadPresets();
+        SelectedPreset = Presets.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool CanSavePreset()
+        => !string.IsNullOrWhiteSpace(PresetName);
+
+    [RelayCommand(CanExecute = nameof(CanRemovePreset))]
+    private void RemovePreset()
+    {
+        if (SelectedPreset is null || SelectedPreset.IsBuiltIn)
+        {
+            return;
+        }
+
+        customPresets = customPresets
+            .Where(p => !p.Name.Equals(SelectedPreset.Name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        AppSettings.SetPresets(customPresets);
+        LoadPresets();
+    }
+
+    private bool CanRemovePreset()
+        => SelectedPreset is not null && !SelectedPreset.IsBuiltIn;
+
+    [RelayCommand(CanExecute = nameof(CanAddRecentSelected))]
+    private void AddRecentSelected()
+    {
+        if (!string.IsNullOrWhiteSpace(SelectedRecentFile))
+        {
+            AddFile(SelectedRecentFile);
+        }
+    }
+
+    private bool CanAddRecentSelected()
+        => !string.IsNullOrWhiteSpace(SelectedRecentFile);
+
+    [RelayCommand]
+    private void ClearRecent()
+    {
+        RecentFiles.Clear();
+        AppSettings.SetRecentFiles(RecentFiles);
+    }
+
+    [RelayCommand]
+    private async Task ImportPresetsAsync()
+    {
+        var picker = new FileOpenPicker();
+        picker.FileTypeFilter.Add(".json");
+        InitializePicker(picker);
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(file.Path);
+            var imported = JsonSerializer.Deserialize<List<OutputPreset>>(json) ?? new List<OutputPreset>();
+            var added = 0;
+
+            foreach (var preset in imported)
+            {
+                if (string.IsNullOrWhiteSpace(preset.Name))
+                {
+                    continue;
+                }
+
+                var normalized = new OutputPreset
+                {
+                    Name = preset.Name.Trim(),
+                    OutputFormat = preset.OutputFormat?.Trim() ?? string.Empty,
+                    OutputExtension = preset.OutputExtension?.Trim() ?? string.Empty,
+                    AdditionalArgs = preset.AdditionalArgs ?? string.Empty,
+                    TemplatePath = preset.TemplatePath ?? string.Empty,
+                    IsBuiltIn = false
+                };
+
+                var existing = customPresets.FirstOrDefault(p => p.Name.Equals(normalized.Name, StringComparison.OrdinalIgnoreCase));
+                if (existing is null)
+                {
+                    customPresets.Add(normalized);
+                    added++;
+                }
+                else
+                {
+                    existing.OutputFormat = normalized.OutputFormat;
+                    existing.OutputExtension = normalized.OutputExtension;
+                    existing.AdditionalArgs = normalized.AdditionalArgs;
+                    existing.TemplatePath = normalized.TemplatePath;
+                }
+            }
+
+            AppSettings.SetPresets(customPresets);
+            LoadPresets();
+            AppendLog($"已导入预设：{added} 项");
+        }
+        catch (Exception ex)
+        {
+            AppendLog(ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportPresetsAsync()
+    {
+        var picker = new FileSavePicker();
+        picker.FileTypeChoices.Add("JSON", new List<string> { ".json" });
+        picker.SuggestedFileName = "pandoc-presets";
+        InitializePicker(picker);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var json = JsonSerializer.Serialize(customPresets, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(file.Path, json);
+            AppendLog($"已导出预设：{customPresets.Count} 项");
+        }
+        catch (Exception ex)
+        {
+            AppendLog(ex.Message);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanApplyRecentOutputDirectory))]
+    private void ApplyRecentOutputDirectory()
+    {
+        if (!string.IsNullOrWhiteSpace(SelectedRecentOutputDirectory))
+        {
+            OutputDirectory = SelectedRecentOutputDirectory;
+        }
+    }
+
+    private bool CanApplyRecentOutputDirectory()
+        => !string.IsNullOrWhiteSpace(SelectedRecentOutputDirectory);
+
+    [RelayCommand]
+    private void ClearRecentOutputDirectories()
+    {
+        RecentOutputDirectories.Clear();
+        AppSettings.SetRecentOutputDirectories(RecentOutputDirectories);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanApplyRecentTemplate))]
+    private void ApplyRecentTemplate()
+    {
+        if (!string.IsNullOrWhiteSpace(SelectedRecentTemplate))
+        {
+            TemplatePath = SelectedRecentTemplate;
+        }
+    }
+
+    private bool CanApplyRecentTemplate()
+        => !string.IsNullOrWhiteSpace(SelectedRecentTemplate);
+
+    [RelayCommand]
+    private void ClearRecentTemplates()
+    {
+        RecentTemplates.Clear();
+        AppSettings.SetRecentTemplates(RecentTemplates);
     }
 
     [RelayCommand(CanExecute = nameof(CanStartConversion))]
@@ -403,51 +827,20 @@ public partial class MainViewModel : BaseViewModel
 
         try
         {
-            foreach (var item in Queue)
-            {
-                if (conversionCts.IsCancellationRequested)
-                {
-                    item.Status = ConversionStatus.Skipped;
-                    item.Message = "已取消";
-                    continue;
-                }
-
-                item.Status = ConversionStatus.Running;
-                item.Message = string.Empty;
-
-                if (string.IsNullOrWhiteSpace(item.OutputPath))
-                {
-                    item.OutputPath = BuildOutputPath(item.InputPath);
-                }
-
-                var outputDirectory = Path.GetDirectoryName(item.OutputPath);
-                if (!string.IsNullOrWhiteSpace(outputDirectory))
-                {
-                    Directory.CreateDirectory(outputDirectory);
-                }
-
-                var args = BuildArguments(item);
-                var result = await PandocService.RunAsync(PandocPath, args, conversionCts.Token);
-
-                if (result.Succeeded)
-                {
-                    item.Status = ConversionStatus.Succeeded;
-                    item.Message = "完成";
-                    AppendLog($"{item.FileName} -> {item.OutputPath}");
-                }
-                else
-                {
-                    item.Status = ConversionStatus.Failed;
-                    item.Message = "失败";
-                    AppendLog($"失败: {item.FileName}");
-                }
-
-                AppendLog(result.StandardError);
-            }
+            var pendingItems = Queue.Where(item => item.Status == ConversionStatus.Pending).ToList();
+            var parallel = Math.Clamp(MaxParallelism, 1, 8);
+            var semaphore = new SemaphoreSlim(parallel, parallel);
+            var tasks = pendingItems.Select(item => ProcessItemAsync(item, semaphore, conversionCts.Token)).ToList();
+            await Task.WhenAll(tasks);
         }
         catch (OperationCanceledException)
         {
             AppendLog("转换已取消");
+            foreach (var item in Queue.Where(item => item.Status == ConversionStatus.Pending))
+            {
+                item.Status = ConversionStatus.Skipped;
+                item.Message = "已取消";
+            }
         }
         catch (Exception ex)
         {
@@ -456,6 +849,12 @@ public partial class MainViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            IsQueuePaused = false;
+            lock (pauseLock)
+            {
+                pauseTcs?.TrySetResult(true);
+                pauseTcs = null;
+            }
             conversionCts?.Dispose();
             conversionCts = null;
         }
@@ -463,6 +862,47 @@ public partial class MainViewModel : BaseViewModel
 
     private bool CanStartConversion()
         => !IsBusy && IsPandocReady && Queue.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanPauseQueue))]
+    private void PauseQueue()
+    {
+        if (IsQueuePaused)
+        {
+            return;
+        }
+
+        IsQueuePaused = true;
+        lock (pauseLock)
+        {
+            pauseTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
+        AppendLog("队列已暂停");
+    }
+
+    private bool CanPauseQueue()
+        => IsBusy && !IsQueuePaused;
+
+    [RelayCommand(CanExecute = nameof(CanResumeQueue))]
+    private void ResumeQueue()
+    {
+        if (!IsQueuePaused)
+        {
+            return;
+        }
+
+        IsQueuePaused = false;
+        lock (pauseLock)
+        {
+            pauseTcs?.TrySetResult(true);
+            pauseTcs = null;
+        }
+
+        AppendLog("队列已继续");
+    }
+
+    private bool CanResumeQueue()
+        => IsBusy && IsQueuePaused;
 
     [RelayCommand(CanExecute = nameof(CanCancelConversion))]
     private void CancelConversion()
@@ -491,6 +931,33 @@ public partial class MainViewModel : BaseViewModel
         };
 
         Queue.Add(item);
+        AddRecentFile(path);
+    }
+
+    public void AddFilesFromPaths(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                continue;
+            }
+
+            if (Directory.Exists(path))
+            {
+                foreach (var file in Directory.GetFiles(path))
+                {
+                    AddFile(file);
+                }
+
+                continue;
+            }
+
+            if (File.Exists(path))
+            {
+                AddFile(path);
+            }
+        }
     }
 
     private string BuildOutputPath(string inputPath)
@@ -524,6 +991,12 @@ public partial class MainViewModel : BaseViewModel
         {
             args.Add("-t");
             args.Add(SelectedOutputFormat);
+        }
+
+        if (!string.IsNullOrWhiteSpace(TemplatePath))
+        {
+            args.Add("--template");
+            args.Add(TemplatePath);
         }
 
         args.AddRange(CommandLineTokenizer.Split(AdditionalArgs));
@@ -580,6 +1053,96 @@ public partial class MainViewModel : BaseViewModel
         LogText += $"[{DateTime.Now:HH:mm:ss}] {line}{Environment.NewLine}";
     }
 
+    private Task WaitIfPausedAsync(CancellationToken token)
+    {
+        Task? waitTask = null;
+        lock (pauseLock)
+        {
+            if (IsQueuePaused)
+            {
+                pauseTcs ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                waitTask = pauseTcs.Task;
+            }
+        }
+
+        if (waitTask is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return waitTask.WaitAsync(token);
+    }
+
+    private static string BuildErrorMessage(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr))
+        {
+            return "失败";
+        }
+
+        var firstLine = stderr
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+        return string.IsNullOrWhiteSpace(firstLine) ? "失败" : firstLine.Trim();
+    }
+
+    private async Task ProcessItemAsync(ConversionItem item, SemaphoreSlim semaphore, CancellationToken token)
+    {
+        await semaphore.WaitAsync(token);
+        try
+        {
+            if (item.Status != ConversionStatus.Pending)
+            {
+                return;
+            }
+
+            if (token.IsCancellationRequested)
+            {
+                item.Status = ConversionStatus.Skipped;
+                item.Message = "已取消";
+                return;
+            }
+
+            await WaitIfPausedAsync(token);
+
+            item.Status = ConversionStatus.Running;
+            item.Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(item.OutputPath))
+            {
+                item.OutputPath = BuildOutputPath(item.InputPath);
+            }
+
+            var outputDirectory = Path.GetDirectoryName(item.OutputPath);
+            if (!string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
+
+            var args = BuildArguments(item);
+            var result = await PandocService.RunAsync(PandocPath, args, token);
+
+            if (result.Succeeded)
+            {
+                item.Status = ConversionStatus.Succeeded;
+                item.Message = "完成";
+                AppendLog($"{item.FileName} -> {item.OutputPath}");
+            }
+            else
+            {
+                item.Status = ConversionStatus.Failed;
+                item.Message = BuildErrorMessage(result.StandardError);
+                AppendLog($"失败: {item.FileName}");
+            }
+
+            AppendLog(result.StandardError);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
     private static void InitializePicker(object picker)
     {
         var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
@@ -591,6 +1154,10 @@ public partial class MainViewModel : BaseViewModel
         OnPropertyChanged(nameof(BusyVisibility));
         StartConversionCommand.NotifyCanExecuteChanged();
         CancelConversionCommand.NotifyCanExecuteChanged();
+        RetryFailedCommand.NotifyCanExecuteChanged();
+        ClearCompletedCommand.NotifyCanExecuteChanged();
+        PauseQueueCommand.NotifyCanExecuteChanged();
+        ResumeQueueCommand.NotifyCanExecuteChanged();
     }
 
     private void OnIsPandocReadyChanged(bool value)
@@ -603,6 +1170,12 @@ public partial class MainViewModel : BaseViewModel
         OnPropertyChanged(nameof(DownloadVisibility));
     }
 
+    [RelayCommand]
+    private void ClearLog()
+    {
+        LogText = string.Empty;
+    }
+
     private void OnPandocPathChanged(string value)
     {
         AppSettings.PandocPath = value;
@@ -612,11 +1185,18 @@ public partial class MainViewModel : BaseViewModel
     {
         AppSettings.OutputDirectory = value;
         UpdateOutputPathsForPending();
+        AddRecentOutputDirectory(value);
     }
 
     private void OnAdditionalArgsChanged(string value)
     {
         AppSettings.AdditionalArgs = value;
+    }
+
+    private void OnTemplatePathChanged(string value)
+    {
+        AppSettings.TemplatePath = value;
+        AddRecentTemplate(value);
     }
 
     private void OnSelectedOutputFormatChanged(string value)
@@ -642,6 +1222,16 @@ public partial class MainViewModel : BaseViewModel
         UpdateOutputPathsForPending();
     }
 
+    private void OnSelectedPresetChanged()
+    {
+        ApplyPresetCommand.NotifyCanExecuteChanged();
+        RemovePresetCommand.NotifyCanExecuteChanged();
+        if (SelectedPreset is not null)
+        {
+            PresetName = SelectedPreset.Name;
+        }
+    }
+
     private void UpdateOutputPathsForPending()
     {
         foreach (var item in Queue)
@@ -651,5 +1241,171 @@ public partial class MainViewModel : BaseViewModel
                 item.OutputPath = BuildOutputPath(item.InputPath);
             }
         }
+    }
+
+    private void LoadPresets()
+    {
+        presets.Clear();
+        var builtIn = new List<OutputPreset>
+        {
+            new()
+            {
+                Name = "PDF",
+                OutputFormat = "pdf",
+                OutputExtension = "pdf",
+                AdditionalArgs = string.Empty,
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "Word (DOCX)",
+                OutputFormat = "docx",
+                OutputExtension = "docx",
+                AdditionalArgs = string.Empty,
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "HTML",
+                OutputFormat = "html",
+                OutputExtension = "html",
+                AdditionalArgs = string.Empty,
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "Markdown",
+                OutputFormat = "markdown",
+                OutputExtension = "md",
+                AdditionalArgs = string.Empty,
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "PDF (带目录)",
+                OutputFormat = "pdf",
+                OutputExtension = "pdf",
+                AdditionalArgs = "--toc --toc-depth=3",
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "PDF (高质量)",
+                OutputFormat = "pdf",
+                OutputExtension = "pdf",
+                AdditionalArgs = "--pdf-engine=tectonic",
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "PDF (低质量)",
+                OutputFormat = "pdf",
+                OutputExtension = "pdf",
+                AdditionalArgs = "--pdf-engine=pdflatex",
+                IsBuiltIn = true
+            }
+        };
+
+        foreach (var preset in builtIn)
+        {
+            presets.Add(preset);
+        }
+
+        customPresets = AppSettings.Presets.ToList();
+        foreach (var preset in customPresets)
+        {
+            presets.Add(preset);
+        }
+
+        SelectedPreset = presets.FirstOrDefault(p => p.Name.Equals(PresetName, StringComparison.OrdinalIgnoreCase))
+            ?? presets.FirstOrDefault();
+    }
+
+    private void LoadRecentFiles()
+    {
+        recentFiles.Clear();
+        foreach (var file in AppSettings.RecentFiles)
+        {
+            recentFiles.Add(file);
+        }
+    }
+
+    private void LoadRecentOutputDirectories()
+    {
+        recentOutputDirectories.Clear();
+        foreach (var directory in AppSettings.RecentOutputDirectories)
+        {
+            recentOutputDirectories.Add(directory);
+        }
+    }
+
+    private void LoadRecentTemplates()
+    {
+        recentTemplates.Clear();
+        foreach (var template in AppSettings.RecentTemplates)
+        {
+            recentTemplates.Add(template);
+        }
+    }
+
+    private void AddRecentFile(string path)
+    {
+        var existing = recentFiles.FirstOrDefault(item => item.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            recentFiles.Remove(existing);
+        }
+
+        recentFiles.Insert(0, path);
+        while (recentFiles.Count > 10)
+        {
+            recentFiles.RemoveAt(recentFiles.Count - 1);
+        }
+
+        AppSettings.SetRecentFiles(recentFiles);
+    }
+
+    private void AddRecentOutputDirectory(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var existing = recentOutputDirectories.FirstOrDefault(item => item.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            recentOutputDirectories.Remove(existing);
+        }
+
+        recentOutputDirectories.Insert(0, path);
+        while (recentOutputDirectories.Count > 10)
+        {
+            recentOutputDirectories.RemoveAt(recentOutputDirectories.Count - 1);
+        }
+
+        AppSettings.SetRecentOutputDirectories(recentOutputDirectories);
+    }
+
+    private void AddRecentTemplate(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var existing = recentTemplates.FirstOrDefault(item => item.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            recentTemplates.Remove(existing);
+        }
+
+        recentTemplates.Insert(0, path);
+        while (recentTemplates.Count > 10)
+        {
+            recentTemplates.RemoveAt(recentTemplates.Count - 1);
+        }
+
+        AppSettings.SetRecentTemplates(recentTemplates);
     }
 }

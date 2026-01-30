@@ -20,7 +20,13 @@ public sealed class SettingsData
 
     public string? TemplatePath { get; set; }
 
+    public int MaxParallelism { get; set; } = 1;
+
     public List<OutputPreset> Presets { get; set; } = new();
 
     public List<string> RecentFiles { get; set; } = new();
+
+    public List<string> RecentOutputDirectories { get; set; } = new();
+
+    public List<string> RecentTemplates { get; set; } = new();
 }

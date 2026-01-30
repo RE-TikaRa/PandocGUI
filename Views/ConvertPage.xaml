@@ -7,13 +7,99 @@
     xmlns:local="using:PandocGUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer
+        HorizontalScrollBarVisibility="Disabled"
+        AllowDrop="True"
+        DragOver="OnDragOver"
+        Drop="OnDrop">
         <StackPanel
             Padding="{StaticResource PagePadding}"
             Spacing="20"
             HorizontalAlignment="Stretch">
             <TextBlock Style="{StaticResource PageTitleText}" Text="转换" />
             <TextBlock Style="{StaticResource SubtleText}" Text="选择格式与参数，开始批量转换" />
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Favorite" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource SectionTitleText}" Text="预设" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="List" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="选择预设" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="一键套用输出格式与参数" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <ComboBox
+                                Width="220"
+                                ItemsSource="{x:Bind ViewModel.Presets, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedPreset, Mode=TwoWay}"
+                                DisplayMemberPath="Name" />
+                            <Button
+                                Command="{x:Bind ViewModel.ApplyPresetCommand}"
+                                Content="应用" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Edit" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="保存为预设" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="保存当前参数为自定义预设" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <TextBox
+                                Width="200"
+                                Text="{x:Bind ViewModel.PresetName, Mode=TwoWay}"
+                                PlaceholderText="预设名称" />
+                            <Button
+                                Command="{x:Bind ViewModel.SavePresetCommand}"
+                                Content="保存" />
+                            <Button
+                                Command="{x:Bind ViewModel.RemovePresetCommand}"
+                                Content="删除" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Save" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="预设导入/导出" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="JSON 格式备份与共享" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <Button
+                                Command="{x:Bind ViewModel.ImportPresetsCommand}"
+                                Content="导入" />
+                            <Button
+                                Command="{x:Bind ViewModel.ExportPresetsCommand}"
+                                Content="导出" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
 
             <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel>
@@ -93,6 +179,31 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Clock" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="最近输出目录" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="快速切换到常用目录" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <ComboBox
+                                Width="260"
+                                ItemsSource="{x:Bind ViewModel.RecentOutputDirectories, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedRecentOutputDirectory, Mode=TwoWay}" />
+                            <Button
+                                Command="{x:Bind ViewModel.ApplyRecentOutputDirectoryCommand}"
+                                Content="应用" />
+                            <Button
+                                Command="{x:Bind ViewModel.ClearRecentOutputDirectoriesCommand}"
+                                Content="清空" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <SymbolIcon Symbol="Edit" />
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="输出扩展名" />
@@ -103,6 +214,56 @@
                             Width="200"
                             Text="{x:Bind ViewModel.OutputExtension, Mode=TwoWay}"
                             PlaceholderText="docx" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Document" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="模板文件" />
+                            <TextBlock
+                                Style="{StaticResource SubtleText}"
+                                Text="{x:Bind ViewModel.TemplatePath, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <TextBox
+                                Width="240"
+                                Text="{x:Bind ViewModel.TemplatePath, Mode=TwoWay}"
+                                PlaceholderText="可选模板路径" />
+                            <Button
+                                Command="{x:Bind ViewModel.BrowseTemplateCommand}"
+                                Content="浏览" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Clock" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="最近模板" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="快速套用常用模板" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <ComboBox
+                                Width="260"
+                                ItemsSource="{x:Bind ViewModel.RecentTemplates, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedRecentTemplate, Mode=TwoWay}" />
+                            <Button
+                                Command="{x:Bind ViewModel.ApplyRecentTemplateCommand}"
+                                Content="应用" />
+                            <Button
+                                Command="{x:Bind ViewModel.ClearRecentTemplatesCommand}"
+                                Content="清空" />
+                        </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource SettingsRowDividerStyle}" />
                     <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
@@ -138,6 +299,12 @@
                             Command="{x:Bind ViewModel.StartConversionCommand}"
                             Content="开始转换" />
                         <Button
+                            Command="{x:Bind ViewModel.PauseQueueCommand}"
+                            Content="暂停" />
+                        <Button
+                            Command="{x:Bind ViewModel.ResumeQueueCommand}"
+                            Content="继续" />
+                        <Button
                             Command="{x:Bind ViewModel.CancelConversionCommand}"
                             Content="取消" />
                         <ProgressRing
@@ -146,6 +313,25 @@
                             IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.BusyVisibility, Mode=OneWay}" />
                     </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Text="最近文件" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ComboBox
+                            Width="320"
+                            ItemsSource="{x:Bind ViewModel.RecentFiles, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedRecentFile, Mode=TwoWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.AddRecentSelectedCommand}"
+                            Content="添加" />
+                        <Button
+                            Command="{x:Bind ViewModel.ClearRecentCommand}"
+                            Content="清空" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource SubtleText}" Text="支持拖拽文件或文件夹到此页面" />
                 </StackPanel>
             </Border>
         </StackPanel>

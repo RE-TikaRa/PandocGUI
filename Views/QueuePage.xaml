@@ -8,7 +8,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:PandocGUI.Models"
     mc:Ignorable="d">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer
+        HorizontalScrollBarVisibility="Disabled"
+        AllowDrop="True"
+        DragOver="OnDragOver"
+        Drop="OnDrop">
         <StackPanel
             Padding="{StaticResource PagePadding}"
             Spacing="20"
@@ -32,6 +36,12 @@
                         <Button
                             Command="{x:Bind ViewModel.ClearQueueCommand}"
                             Content="清空队列" />
+                        <Button
+                            Command="{x:Bind ViewModel.RetryFailedCommand}"
+                            Content="重试失败" />
+                        <Button
+                            Command="{x:Bind ViewModel.ClearCompletedCommand}"
+                            Content="清理已完成" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -54,8 +64,17 @@
                                 Command="{x:Bind ViewModel.StartConversionCommand}"
                                 Content="开始转换" />
                             <Button
+                                Command="{x:Bind ViewModel.PauseQueueCommand}"
+                                Content="暂停" />
+                            <Button
+                                Command="{x:Bind ViewModel.ResumeQueueCommand}"
+                                Content="继续" />
+                            <Button
                                 Command="{x:Bind ViewModel.CancelConversionCommand}"
                                 Content="取消" />
+                            <Button
+                                Command="{x:Bind ViewModel.OpenOutputFolderCommand}"
+                                Content="打开输出目录" />
                             <ProgressRing
                                 Width="20"
                                 Height="20"
@@ -107,6 +126,10 @@
             <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
                     <TextBlock Style="{StaticResource SectionTitleText}" Text="日志" />
+                    <Button
+                        Command="{x:Bind ViewModel.ClearLogCommand}"
+                        HorizontalAlignment="Left"
+                        Content="清空日志" />
                     <TextBox
                         Height="180"
                         Text="{x:Bind ViewModel.LogText, Mode=OneWay}"
