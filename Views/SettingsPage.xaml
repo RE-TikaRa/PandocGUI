@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="PandocGUI.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:PandocGUI"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel
+            Padding="{StaticResource PagePadding}"
+            Spacing="20"
+            HorizontalAlignment="Stretch">
+            <TextBlock Style="{StaticResource PageTitleText}" Text="设置" />
+            <TextBlock Style="{StaticResource SubtleText}" Text="Pandoc 管理与默认选项" />
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Setting" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource SectionTitleText}" Text="Pandoc 管理" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Help" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="当前状态" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="{x:Bind ViewModel.PandocStatus, Mode=OneWay}" />
+                        </StackPanel>
+                        <Button
+                            Grid.Column="2"
+                            Command="{x:Bind ViewModel.RefreshPandocCommand}"
+                            Content="刷新" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Folder" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="pandoc.exe 路径" />
+                            <TextBlock
+                                Style="{StaticResource SubtleText}"
+                                Text="{x:Bind ViewModel.PandocPath, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Button
+                            Grid.Column="2"
+                            Command="{x:Bind ViewModel.SelectPandocCommand}"
+                            Content="选择" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Save" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="下载与安装" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="自动下载或查看安装指引" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <Button
+                                Command="{x:Bind ViewModel.DownloadPandocCommand}"
+                                Content="下载并内置" />
+                            <Button
+                                Command="{x:Bind ViewModel.OpenPandocWebsiteCommand}"
+                                Content="安装指引" />
+                            <ProgressBar
+                                Width="120"
+                                Height="4"
+                                Minimum="0"
+                                Maximum="1"
+                                Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.DownloadVisibility, Mode=OneWay}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Save" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource SectionTitleText}" Text="默认输出设置" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Folder" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="输出目录" />
+                            <TextBlock
+                                Style="{StaticResource SubtleText}"
+                                Text="{x:Bind ViewModel.OutputDirectory, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <TextBox
+                                Width="240"
+                                Text="{x:Bind ViewModel.OutputDirectory, Mode=TwoWay}"
+                                PlaceholderText="选择输出目录" />
+                            <Button
+                                Command="{x:Bind ViewModel.BrowseOutputFolderCommand}"
+                                Content="浏览" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Edit" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="默认扩展名" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="用于新任务输出文件" />
+                        </StackPanel>
+                        <TextBox
+                            Grid.Column="2"
+                            Width="200"
+                            Text="{x:Bind ViewModel.OutputExtension, Mode=TwoWay}"
+                            PlaceholderText="docx" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Setting" />
+                        <StackPanel Grid.Column="1" Spacing="8">
+                            <TextBlock Text="默认高级参数" />
+                            <TextBox
+                                Height="90"
+                                Text="{x:Bind ViewModel.AdditionalArgs, Mode=TwoWay}"
+                                AcceptsReturn="True"
+                                TextWrapping="Wrap"
+                                PlaceholderText="常用参数会在新任务中自动附加" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Text="日志" />
+                    <TextBox
+                        Height="180"
+                        Text="{x:Bind ViewModel.LogText, Mode=OneWay}"
+                        AcceptsReturn="True"
+                        IsReadOnly="True"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

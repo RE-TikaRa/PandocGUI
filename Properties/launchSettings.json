@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PandocGUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "PandocGUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
