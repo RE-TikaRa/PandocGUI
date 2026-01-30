@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using Microsoft.UI.Xaml;
@@ -21,13 +23,7 @@ public partial class MainViewModel : BaseViewModel
     public MainViewModel()
     {
         Title = "Pandoc GUI";
-        Queue.CollectionChanged += (_, _) =>
-        {
-            StartConversionCommand.NotifyCanExecuteChanged();
-            OnPropertyChanged(nameof(QueueCount));
-            RetryFailedCommand.NotifyCanExecuteChanged();
-            ClearCompletedCommand.NotifyCanExecuteChanged();
-        };
+        Queue.CollectionChanged += OnQueueCollectionChanged;
     }
 
     public ObservableCollection<ConversionItem> Queue { get; } = new();
@@ -57,6 +53,14 @@ public partial class MainViewModel : BaseViewModel
     private int maxParallelism = 1;
     private string? selectedRecentOutputDirectory;
     private string? selectedRecentTemplate;
+    private int queueTotal;
+    private int queuePending;
+    private int queueRunning;
+    private int queueSucceeded;
+    private int queueFailed;
+    private int queueSkipped;
+    private int queueCompleted;
+    private double queueProgress;
     private OutputPreset? selectedPreset;
     private string? selectedRecentFile;
     private readonly ObservableCollection<OutputPreset> presets = new();
@@ -312,6 +316,60 @@ public partial class MainViewModel : BaseViewModel
         set => SetProperty(ref downloadProgress, value);
     }
 
+    public int QueueTotal
+    {
+        get => queueTotal;
+        private set => SetProperty(ref queueTotal, value);
+    }
+
+    public int QueuePending
+    {
+        get => queuePending;
+        private set => SetProperty(ref queuePending, value);
+    }
+
+    public int QueueRunning
+    {
+        get => queueRunning;
+        private set => SetProperty(ref queueRunning, value);
+    }
+
+    public int QueueSucceeded
+    {
+        get => queueSucceeded;
+        private set => SetProperty(ref queueSucceeded, value);
+    }
+
+    public int QueueFailed
+    {
+        get => queueFailed;
+        private set => SetProperty(ref queueFailed, value);
+    }
+
+    public int QueueSkipped
+    {
+        get => queueSkipped;
+        private set => SetProperty(ref queueSkipped, value);
+    }
+
+    public int QueueCompleted
+    {
+        get => queueCompleted;
+        private set => SetProperty(ref queueCompleted, value);
+    }
+
+    public double QueueProgress
+    {
+        get => queueProgress;
+        private set => SetProperty(ref queueProgress, value);
+    }
+
+    public string QueueSummary => $"总计 {QueueTotal} · 进行中 {QueueRunning} · 待处理 {QueuePending}";
+
+    public string QueueResultSummary => $"完成 {QueueSucceeded} · 失败 {QueueFailed} · 跳过 {QueueSkipped}";
+
+    public string QueueProgressText => $"进度 {QueueCompleted}/{QueueTotal}";
+
     public Visibility BusyVisibility => IsBusy ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility DownloadVisibility => IsDownloading ? Visibility.Visible : Visibility.Collapsed;
@@ -339,6 +397,7 @@ public partial class MainViewModel : BaseViewModel
         LoadRecentFiles();
         LoadRecentOutputDirectories();
         LoadRecentTemplates();
+        UpdateQueueStats();
         if (!AppSettings.HasLaunchedBefore)
         {
             AppSettings.HasLaunchedBefore = true;
@@ -863,6 +922,41 @@ public partial class MainViewModel : BaseViewModel
     private bool CanStartConversion()
         => !IsBusy && IsPandocReady && Queue.Count > 0;
 
+    private void OnQueueCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+        {
+            foreach (var item in e.NewItems.OfType<ConversionItem>())
+            {
+                item.PropertyChanged += OnQueueItemPropertyChanged;
+            }
+        }
+
+        if (e.OldItems is not null)
+        {
+            foreach (var item in e.OldItems.OfType<ConversionItem>())
+            {
+                item.PropertyChanged -= OnQueueItemPropertyChanged;
+            }
+        }
+
+        StartConversionCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(QueueCount));
+        RetryFailedCommand.NotifyCanExecuteChanged();
+        ClearCompletedCommand.NotifyCanExecuteChanged();
+        UpdateQueueStats();
+    }
+
+    private void OnQueueItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ConversionItem.Status))
+        {
+            UpdateQueueStats();
+            RetryFailedCommand.NotifyCanExecuteChanged();
+            ClearCompletedCommand.NotifyCanExecuteChanged();
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanPauseQueue))]
     private void PauseQueue()
     {
@@ -1243,6 +1337,29 @@ public partial class MainViewModel : BaseViewModel
         }
     }
 
+    private void UpdateQueueStats()
+    {
+        var total = Queue.Count;
+        var pending = Queue.Count(item => item.Status == ConversionStatus.Pending);
+        var running = Queue.Count(item => item.Status == ConversionStatus.Running);
+        var succeeded = Queue.Count(item => item.Status == ConversionStatus.Succeeded);
+        var failed = Queue.Count(item => item.Status == ConversionStatus.Failed);
+        var skipped = Queue.Count(item => item.Status == ConversionStatus.Skipped);
+        var completed = succeeded + failed + skipped;
+
+        QueueTotal = total;
+        QueuePending = pending;
+        QueueRunning = running;
+        QueueSucceeded = succeeded;
+        QueueFailed = failed;
+        QueueSkipped = skipped;
+        QueueCompleted = completed;
+        QueueProgress = total == 0 ? 0 : (double)completed / total;
+        OnPropertyChanged(nameof(QueueSummary));
+        OnPropertyChanged(nameof(QueueResultSummary));
+        OnPropertyChanged(nameof(QueueProgressText));
+    }
+
     private void LoadPresets()
     {
         presets.Clear();
@@ -1302,6 +1419,22 @@ public partial class MainViewModel : BaseViewModel
                 OutputFormat = "pdf",
                 OutputExtension = "pdf",
                 AdditionalArgs = "--pdf-engine=pdflatex",
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "HTML + CSS",
+                OutputFormat = "html",
+                OutputExtension = "html",
+                AdditionalArgs = "--css=style.css",
+                IsBuiltIn = true
+            },
+            new()
+            {
+                Name = "Word 模板",
+                OutputFormat = "docx",
+                OutputExtension = "docx",
+                AdditionalArgs = "--reference-doc=template.docx",
                 IsBuiltIn = true
             }
         };

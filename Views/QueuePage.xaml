@@ -83,6 +83,23 @@
                         </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <StackPanel Padding="{StaticResource RowPadding}" Spacing="6">
+                        <ProgressBar
+                            Height="6"
+                            Minimum="0"
+                            Maximum="1"
+                            Value="{x:Bind ViewModel.QueueProgress, Mode=OneWay}" />
+                        <TextBlock
+                            Style="{StaticResource SubtleText}"
+                            Text="{x:Bind ViewModel.QueueProgressText, Mode=OneWay}" />
+                        <TextBlock
+                            Style="{StaticResource SubtleText}"
+                            Text="{x:Bind ViewModel.QueueSummary, Mode=OneWay}" />
+                        <TextBlock
+                            Style="{StaticResource SubtleText}"
+                            Text="{x:Bind ViewModel.QueueResultSummary, Mode=OneWay}" />
+                    </StackPanel>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
                     <ListView
                         Height="360"
                         ItemContainerStyle="{StaticResource SettingsListItemStyle}"

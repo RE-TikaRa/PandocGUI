@@ -50,6 +50,9 @@
                             <Button
                                 Command="{x:Bind ViewModel.ApplyPresetCommand}"
                                 Content="应用" />
+                            <Button
+                                Command="{x:Bind ViewModel.BrowseTemplateCommand}"
+                                Content="选择模板" />
                         </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource SettingsRowDividerStyle}" />
@@ -312,6 +315,22 @@
                             Height="20"
                             IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.BusyVisibility, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <ProgressBar
+                            Height="6"
+                            Minimum="0"
+                            Maximum="1"
+                            Value="{x:Bind ViewModel.QueueProgress, Mode=OneWay}" />
+                        <TextBlock
+                            Style="{StaticResource SubtleText}"
+                            Text="{x:Bind ViewModel.QueueProgressText, Mode=OneWay}" />
+                        <TextBlock
+                            Style="{StaticResource SubtleText}"
+                            Text="{x:Bind ViewModel.QueueSummary, Mode=OneWay}" />
+                        <TextBlock
+                            Style="{StaticResource SubtleText}"
+                            Text="{x:Bind ViewModel.QueueResultSummary, Mode=OneWay}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
