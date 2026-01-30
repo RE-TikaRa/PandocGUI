@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="PandocGUI.Views.RecentPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:PandocGUI"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <ScrollViewer
+        HorizontalScrollBarVisibility="Disabled"
+        AllowDrop="True"
+        DragOver="OnDragOver"
+        Drop="OnDrop">
+        <StackPanel
+            Padding="{StaticResource PagePadding}"
+            Spacing="20"
+            HorizontalAlignment="Stretch">
+            <TextBlock Style="{StaticResource PageTitleText}" Text="最近项目" />
+            <TextBlock Style="{StaticResource SubtleText}" Text="快速访问最近文件与常用路径" />
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Text="最近文件" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ComboBox
+                            Width="320"
+                            ItemsSource="{x:Bind ViewModel.RecentFiles, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedRecentFile, Mode=TwoWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.AddRecentSelectedCommand}"
+                            Content="添加" />
+                        <Button
+                            Command="{x:Bind ViewModel.ClearRecentCommand}"
+                            Content="清空" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource SubtleText}" Text="支持拖拽文件或文件夹到此页面" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Text="最近输出目录" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ComboBox
+                            Width="320"
+                            ItemsSource="{x:Bind ViewModel.RecentOutputDirectories, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedRecentOutputDirectory, Mode=TwoWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.ApplyRecentOutputDirectoryCommand}"
+                            Content="应用" />
+                        <Button
+                            Command="{x:Bind ViewModel.ClearRecentOutputDirectoriesCommand}"
+                            Content="清空" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel Padding="{StaticResource CardPadding}" Spacing="12">
+                    <TextBlock Style="{StaticResource SectionTitleText}" Text="最近模板" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ComboBox
+                            Width="320"
+                            ItemsSource="{x:Bind ViewModel.RecentTemplates, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedRecentTemplate, Mode=TwoWay}" />
+                        <Button
+                            Command="{x:Bind ViewModel.ApplyRecentTemplateCommand}"
+                            Content="应用" />
+                        <Button
+                            Command="{x:Bind ViewModel.ClearRecentTemplatesCommand}"
+                            Content="清空" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

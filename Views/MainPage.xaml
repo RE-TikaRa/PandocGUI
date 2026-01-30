@@ -45,21 +45,36 @@
             SelectionChanged="OnNavigationSelectionChanged"
             SelectionFollowsFocus="Enabled">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="主页" Tag="home" IsSelected="True">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Home" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="转换" Tag="convert">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Switch" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="队列" Tag="queue">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Bullets" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
+            <NavigationViewItem Content="主页" Tag="home">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Home" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="转换" Tag="convert">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Switch" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="转换设置" Tag="convert-settings">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Setting" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="预设管理" Tag="presets">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Favorite" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="最近项目" Tag="recent">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Clock" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="队列" Tag="queue">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Bullets" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
                 <NavigationViewItem Content="设置" Tag="settings">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Setting" />

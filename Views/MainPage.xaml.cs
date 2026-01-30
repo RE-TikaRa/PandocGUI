@@ -15,7 +15,10 @@ public partial class MainPage : Page
         App.MainWindow.ExtendsContentIntoTitleBar = true;
         App.MainWindow.SetTitleBar(AppTitleBar);
         await ViewModel.InitializeAsync(XamlRoot);
-        ContentFrame.Navigate(typeof(HomePage));
+        if (ContentFrame.CurrentSourcePageType is null)
+        {
+            ContentFrame.Navigate(typeof(HomePage));
+        }
     }
 
     private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -30,6 +33,9 @@ public partial class MainPage : Page
         {
             "home" => typeof(HomePage),
             "convert" => typeof(ConvertPage),
+            "convert-settings" => typeof(ConvertSettingsPage),
+            "presets" => typeof(PresetsPage),
+            "recent" => typeof(RecentPage),
             "queue" => typeof(QueuePage),
             "settings" => typeof(SettingsPage),
             _ => typeof(HomePage)
