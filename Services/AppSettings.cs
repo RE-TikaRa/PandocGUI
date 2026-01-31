@@ -9,11 +9,6 @@ namespace PandocGUI.Services;
 
 public static class AppSettings
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     private static SettingsData data = Load();
 
     public static string SettingsFilePath => Path.Combine(DataDirectoryPath, "settings.json");
@@ -183,7 +178,7 @@ public static class AppSettings
             }
 
             var json = File.ReadAllText(path);
-            var loaded = JsonSerializer.Deserialize<SettingsData>(json) ?? new SettingsData();
+            var loaded = JsonSerializer.Deserialize(json, AppJsonContext.Default.SettingsData) ?? new SettingsData();
             loaded.Presets ??= new List<OutputPreset>();
             loaded.OutputFormatSettings ??= new List<OutputFormatSettings>();
             loaded.RecentFiles ??= new List<string>();
@@ -201,7 +196,7 @@ public static class AppSettings
     private static void Save()
     {
         Directory.CreateDirectory(DataDirectoryPath);
-        var json = JsonSerializer.Serialize(data, JsonOptions);
+        var json = JsonSerializer.Serialize(data, AppJsonContext.Default.SettingsData);
         File.WriteAllText(SettingsFilePath, json);
     }
 }

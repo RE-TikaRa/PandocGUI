@@ -942,7 +942,7 @@ public partial class MainViewModel : BaseViewModel
         try
         {
             var json = File.ReadAllText(file.Path);
-            var imported = JsonSerializer.Deserialize<List<OutputPreset>>(json) ?? new List<OutputPreset>();
+            var imported = JsonSerializer.Deserialize(json, AppJsonContext.Default.OutputPresetList) ?? new List<OutputPreset>();
             var added = 0;
 
             foreach (var preset in imported)
@@ -1003,7 +1003,7 @@ public partial class MainViewModel : BaseViewModel
 
         try
         {
-            var json = JsonSerializer.Serialize(customPresets, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(customPresets, AppJsonContext.Default.OutputPresetList);
             File.WriteAllText(file.Path, json);
             AppendLog($"已导出预设：{customPresets.Count} 项");
         }
