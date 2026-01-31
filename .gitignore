@@ -10,6 +10,7 @@ x86/
 [Aa][Rr][Mm]64/
 TestResults/
 .vscode/
+.codemap/
 *.suo
 *.user
 *.userosscache
@@ -63,4 +64,3 @@ GeneratedFiles/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
