@@ -47,6 +47,10 @@ public partial class MainViewModel : BaseViewModel
     private string presetName = string.Empty;
     private string logText = string.Empty;
     private string workflowStatusText = string.Empty;
+    private string selectedFormatSetting = string.Empty;
+    private string formatSettingOutputExtension = string.Empty;
+    private string formatSettingAdditionalArgs = string.Empty;
+    private string formatSettingTemplatePath = string.Empty;
     private ConversionItem? selectedItem;
     private bool isDownloading;
     private double downloadProgress;
@@ -71,6 +75,7 @@ public partial class MainViewModel : BaseViewModel
     private readonly ObservableCollection<string> recentOutputFormats = new();
     private readonly ObservableCollection<string> recentTemplates = new();
     private readonly ObservableCollection<int> parallelismOptions = new() { 1, 2, 3, 4, 5, 6, 7, 8 };
+    private readonly Dictionary<string, OutputFormatSettings> formatSettings = new(StringComparer.OrdinalIgnoreCase);
     private List<OutputPreset> customPresets = new();
 
     public bool IsBusy
@@ -307,6 +312,56 @@ public partial class MainViewModel : BaseViewModel
         private set => SetProperty(ref workflowStatusText, value);
     }
 
+    public string SelectedFormatSetting
+    {
+        get => selectedFormatSetting;
+        set
+        {
+            if (SetProperty(ref selectedFormatSetting, value))
+            {
+                LoadFormatSettingFields(value);
+                SaveFormatSettingCommand.NotifyCanExecuteChanged();
+                ClearFormatSettingCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string FormatSettingOutputExtension
+    {
+        get => formatSettingOutputExtension;
+        set
+        {
+            if (SetProperty(ref formatSettingOutputExtension, value))
+            {
+                SaveFormatSettingCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string FormatSettingAdditionalArgs
+    {
+        get => formatSettingAdditionalArgs;
+        set
+        {
+            if (SetProperty(ref formatSettingAdditionalArgs, value))
+            {
+                SaveFormatSettingCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string FormatSettingTemplatePath
+    {
+        get => formatSettingTemplatePath;
+        set
+        {
+            if (SetProperty(ref formatSettingTemplatePath, value))
+            {
+                SaveFormatSettingCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
     public ConversionItem? SelectedItem
     {
         get => selectedItem;
@@ -418,6 +473,7 @@ public partial class MainViewModel : BaseViewModel
         MaxParallelism = AppSettings.MaxParallelism;
         AutoStartOnDrop = AppSettings.AutoStartOnDrop;
         LoadPresets();
+        LoadFormatSettings();
         LoadRecentFiles();
         LoadRecentOutputDirectories();
         LoadRecentOutputFormats();
@@ -600,6 +656,93 @@ public partial class MainViewModel : BaseViewModel
         {
             TemplatePath = file.Path;
         }
+    }
+
+    [RelayCommand]
+    private async Task BrowseFormatTemplateAsync()
+    {
+        var picker = new FileOpenPicker();
+        picker.FileTypeFilter.Add("*");
+        InitializePicker(picker);
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+        {
+            FormatSettingTemplatePath = file.Path;
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSaveFormatSetting))]
+    private void SaveFormatSetting()
+    {
+        var format = SelectedFormatSetting?.Trim();
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return;
+        }
+
+        var outputExtension = NormalizeSettingValue(FormatSettingOutputExtension);
+        var additionalArgs = NormalizeSettingValue(FormatSettingAdditionalArgs);
+        var templatePath = NormalizeSettingValue(FormatSettingTemplatePath);
+        var hasOverrides = !string.IsNullOrWhiteSpace(outputExtension) ||
+            !string.IsNullOrWhiteSpace(additionalArgs) ||
+            !string.IsNullOrWhiteSpace(templatePath);
+
+        if (!hasOverrides)
+        {
+            formatSettings.Remove(format);
+        }
+        else
+        {
+            formatSettings[format] = new OutputFormatSettings
+            {
+                Format = format,
+                OutputExtension = outputExtension,
+                AdditionalArgs = additionalArgs,
+                TemplatePath = templatePath
+            };
+        }
+
+        AppSettings.SetOutputFormatSettings(formatSettings.Values);
+        if (string.Equals(format, SelectedOutputFormat, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateOutputPathsForPending();
+        }
+
+        ClearFormatSettingCommand.NotifyCanExecuteChanged();
+        SaveFormatSettingCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanSaveFormatSetting()
+        => !string.IsNullOrWhiteSpace(SelectedFormatSetting);
+
+    [RelayCommand(CanExecute = nameof(CanClearFormatSetting))]
+    private void ClearFormatSetting()
+    {
+        var format = SelectedFormatSetting?.Trim();
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return;
+        }
+
+        formatSettings.Remove(format);
+        AppSettings.SetOutputFormatSettings(formatSettings.Values);
+        FormatSettingOutputExtension = string.Empty;
+        FormatSettingAdditionalArgs = string.Empty;
+        FormatSettingTemplatePath = string.Empty;
+        if (string.Equals(format, SelectedOutputFormat, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateOutputPathsForPending();
+        }
+
+        ClearFormatSettingCommand.NotifyCanExecuteChanged();
+        SaveFormatSettingCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanClearFormatSetting()
+    {
+        var format = SelectedFormatSetting?.Trim();
+        return !string.IsNullOrWhiteSpace(format) && formatSettings.ContainsKey(format);
     }
 
     [RelayCommand]
@@ -1100,10 +1243,13 @@ public partial class MainViewModel : BaseViewModel
             directory = Path.GetDirectoryName(inputPath) ?? string.Empty;
         }
 
-        var extension = string.IsNullOrWhiteSpace(OutputExtension)
-            ? SelectedOutputFormat
-            : OutputExtension.TrimStart('.');
+        var extension = GetEffectiveOutputExtension();
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = SelectedOutputFormat;
+        }
 
+        extension = extension.TrimStart('.');
         var fileName = Path.GetFileNameWithoutExtension(inputPath);
         return Path.Combine(directory, $"{fileName}.{extension}");
     }
@@ -1125,13 +1271,20 @@ public partial class MainViewModel : BaseViewModel
             args.Add(SelectedOutputFormat);
         }
 
-        if (!string.IsNullOrWhiteSpace(TemplatePath))
+        var formatSetting = GetFormatSetting(SelectedOutputFormat);
+        var templatePath = NormalizeSettingValue(formatSetting?.TemplatePath) ?? TemplatePath;
+        if (!string.IsNullOrWhiteSpace(templatePath))
         {
             args.Add("--template");
-            args.Add(TemplatePath);
+            args.Add(templatePath);
         }
 
         args.AddRange(CommandLineTokenizer.Split(AdditionalArgs));
+        var formatArgs = NormalizeSettingValue(formatSetting?.AdditionalArgs);
+        if (!string.IsNullOrWhiteSpace(formatArgs))
+        {
+            args.AddRange(CommandLineTokenizer.Split(formatArgs));
+        }
         args.Add("-o");
         args.Add(item.OutputPath);
         args.Add(item.InputPath);
@@ -1166,6 +1319,13 @@ public partial class MainViewModel : BaseViewModel
             OutputFormats.Count > 0)
         {
             SelectedOutputFormat = OutputFormats[0];
+        }
+
+        if (OutputFormats.Count > 0 &&
+            (string.IsNullOrWhiteSpace(SelectedFormatSetting) ||
+            !OutputFormats.Any(f => f.Equals(SelectedFormatSetting, StringComparison.OrdinalIgnoreCase))))
+        {
+            SelectedFormatSetting = SelectedOutputFormat;
         }
     }
 
@@ -1344,6 +1504,7 @@ public partial class MainViewModel : BaseViewModel
 
         lastOutputFormat = value;
         AddRecentOutputFormat(value);
+        UpdateOutputPathsForPending();
         UpdateWorkflowStatusText();
     }
 
@@ -1411,6 +1572,29 @@ public partial class MainViewModel : BaseViewModel
         var outputText = string.IsNullOrWhiteSpace(OutputDirectory) ? "输出目录未设置" : "输出目录已设置";
         var pandocText = IsPandocReady ? "Pandoc 已就绪" : "Pandoc 未就绪";
         WorkflowStatusText = $"{importText} · {formatText} · {outputText} · {pandocText}";
+    }
+
+    private void LoadFormatSettings()
+    {
+        formatSettings.Clear();
+        foreach (var setting in AppSettings.OutputFormatSettings)
+        {
+            if (string.IsNullOrWhiteSpace(setting.Format))
+            {
+                continue;
+            }
+
+            formatSettings[setting.Format] = setting;
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedFormatSetting))
+        {
+            SelectedFormatSetting = SelectedOutputFormat;
+        }
+        else
+        {
+            LoadFormatSettingFields(SelectedFormatSetting);
+        }
     }
 
     private void LoadPresets()
@@ -1549,6 +1733,51 @@ public partial class MainViewModel : BaseViewModel
         {
             recentTemplates.Add(template);
         }
+    }
+
+    private void LoadFormatSettingFields(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            FormatSettingOutputExtension = string.Empty;
+            FormatSettingAdditionalArgs = string.Empty;
+            FormatSettingTemplatePath = string.Empty;
+            return;
+        }
+
+        if (formatSettings.TryGetValue(format.Trim(), out var setting))
+        {
+            FormatSettingOutputExtension = setting.OutputExtension ?? string.Empty;
+            FormatSettingAdditionalArgs = setting.AdditionalArgs ?? string.Empty;
+            FormatSettingTemplatePath = setting.TemplatePath ?? string.Empty;
+            return;
+        }
+
+        FormatSettingOutputExtension = string.Empty;
+        FormatSettingAdditionalArgs = string.Empty;
+        FormatSettingTemplatePath = string.Empty;
+    }
+
+    private OutputFormatSettings? GetFormatSetting(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return null;
+        }
+
+        return formatSettings.TryGetValue(format.Trim(), out var setting) ? setting : null;
+    }
+
+    private static string? NormalizeSettingValue(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private string GetEffectiveOutputExtension()
+    {
+        var formatSetting = GetFormatSetting(SelectedOutputFormat);
+        return NormalizeSettingValue(formatSetting?.OutputExtension) ?? OutputExtension;
     }
 
     private void AddRecentFile(string path)

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="PandocGUI.Views.OutputFormatPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:PandocGUI"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel
+            Padding="{StaticResource PagePadding}"
+            Spacing="20"
+            HorizontalAlignment="Stretch">
+            <TextBlock Style="{StaticResource PageTitleText}" Text="输出格式设置" />
+            <TextBlock Style="{StaticResource SubtleText}" Text="为指定输出格式保存模板、扩展名与参数" />
+
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Document" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource SectionTitleText}" Text="选择格式" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="List" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="输出格式" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="选择需要单独配置的格式" />
+                        </StackPanel>
+                        <ComboBox
+                            Grid.Column="2"
+                            Width="220"
+                            ItemsSource="{x:Bind ViewModel.OutputFormats, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedFormatSetting, Mode=TwoWay}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <StackPanel>
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Setting" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource SectionTitleText}" Text="格式参数" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Edit" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="输出扩展名" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="留空则使用全局设置" />
+                        </StackPanel>
+                        <TextBox
+                            Grid.Column="2"
+                            Width="200"
+                            Text="{x:Bind ViewModel.FormatSettingOutputExtension, Mode=TwoWay}"
+                            PlaceholderText="例如 docx、pdf" />
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Document" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="模板文件" />
+                            <TextBlock Style="{StaticResource SubtleText}" Text="可覆盖全局模板" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <TextBox
+                                Width="220"
+                                Text="{x:Bind ViewModel.FormatSettingTemplatePath, Mode=TwoWay}"
+                                PlaceholderText="可选模板路径" />
+                            <Button
+                                Command="{x:Bind ViewModel.BrowseFormatTemplateCommand}"
+                                Content="浏览" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+                    <Grid Padding="{StaticResource RowPadding}" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <SymbolIcon Symbol="Setting" />
+                        <StackPanel Grid.Column="1" Spacing="8">
+                            <TextBlock Text="附加参数" />
+                            <TextBox
+                                Height="90"
+                                Text="{x:Bind ViewModel.FormatSettingAdditionalArgs, Mode=TwoWay}"
+                                AcceptsReturn="True"
+                                TextWrapping="Wrap"
+                                PlaceholderText="只对该输出格式生效" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    Command="{x:Bind ViewModel.SaveFormatSettingCommand}"
+                    Content="保存设置" />
+                <Button
+                    Command="{x:Bind ViewModel.ClearFormatSettingCommand}"
+                    Content="清除该格式设置" />
+                <TextBlock Style="{StaticResource SubtleText}" Text="留空会使用全局设置" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

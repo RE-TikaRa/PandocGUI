@@ -37,6 +37,7 @@ public partial class MainPage : Page
         {
             "home" => typeof(HomePage),
             "convert" => typeof(ConvertPage),
+            "format-settings" => typeof(OutputFormatPage),
             "settings" => typeof(SettingsPage),
             _ => typeof(HomePage)
         };
@@ -61,6 +62,7 @@ public partial class MainPage : Page
         {
             "home" => typeof(HomePage),
             "convert" => typeof(ConvertPage),
+            "format-settings" => typeof(OutputFormatPage),
             "settings" => typeof(SettingsPage),
             _ => typeof(HomePage)
         };

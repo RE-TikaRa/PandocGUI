@@ -110,6 +110,8 @@ public static class AppSettings
 
     public static IReadOnlyList<OutputPreset> Presets => data.Presets;
 
+    public static IReadOnlyList<OutputFormatSettings> OutputFormatSettings => data.OutputFormatSettings;
+
     public static IReadOnlyList<string> RecentFiles => data.RecentFiles;
 
     public static IReadOnlyList<string> RecentOutputDirectories => data.RecentOutputDirectories;
@@ -121,6 +123,12 @@ public static class AppSettings
     public static void SetPresets(IEnumerable<OutputPreset> presets)
     {
         data.Presets = presets.ToList();
+        Save();
+    }
+
+    public static void SetOutputFormatSettings(IEnumerable<OutputFormatSettings> settings)
+    {
+        data.OutputFormatSettings = settings.ToList();
         Save();
     }
 
@@ -177,6 +185,7 @@ public static class AppSettings
             var json = File.ReadAllText(path);
             var loaded = JsonSerializer.Deserialize<SettingsData>(json) ?? new SettingsData();
             loaded.Presets ??= new List<OutputPreset>();
+            loaded.OutputFormatSettings ??= new List<OutputFormatSettings>();
             loaded.RecentFiles ??= new List<string>();
             loaded.RecentOutputDirectories ??= new List<string>();
             loaded.RecentOutputFormats ??= new List<string>();

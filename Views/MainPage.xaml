@@ -55,6 +55,11 @@
                     <SymbolIcon Symbol="Switch" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
+            <NavigationViewItem Content="输出格式" Tag="format-settings">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Document" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
             <NavigationViewItem Content="设置" Tag="settings">
                 <NavigationViewItem.Icon>
                     <SymbolIcon Symbol="Setting" />
