@@ -18,7 +18,7 @@
             <Image
                 x:Name="LogoImage"
                 Stretch="Uniform"
-                Source="ms-appx:///Assets/LOGO.svg" />
+                Source="{ThemeResource LogoImageSource}" />
         </StackPanel>
     </Grid>
 </Page>

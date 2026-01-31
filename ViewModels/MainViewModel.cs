@@ -37,6 +37,7 @@ public partial class MainViewModel : BaseViewModel
     private bool isQueuePaused;
     private string pandocPath = string.Empty;
     private string pandocStatus = "未检测";
+    private bool autoStartOnDrop;
     private string selectedInputFormat = "Auto";
     private string selectedOutputFormat = "docx";
     private string outputDirectory = string.Empty;
@@ -45,6 +46,7 @@ public partial class MainViewModel : BaseViewModel
     private string templatePath = string.Empty;
     private string presetName = string.Empty;
     private string logText = string.Empty;
+    private string workflowStatusText = string.Empty;
     private ConversionItem? selectedItem;
     private bool isDownloading;
     private double downloadProgress;
@@ -66,6 +68,7 @@ public partial class MainViewModel : BaseViewModel
     private readonly ObservableCollection<OutputPreset> presets = new();
     private readonly ObservableCollection<string> recentFiles = new();
     private readonly ObservableCollection<string> recentOutputDirectories = new();
+    private readonly ObservableCollection<string> recentOutputFormats = new();
     private readonly ObservableCollection<string> recentTemplates = new();
     private readonly ObservableCollection<int> parallelismOptions = new() { 1, 2, 3, 4, 5, 6, 7, 8 };
     private List<OutputPreset> customPresets = new();
@@ -123,6 +126,18 @@ public partial class MainViewModel : BaseViewModel
     {
         get => pandocStatus;
         set => SetProperty(ref pandocStatus, value);
+    }
+
+    public bool AutoStartOnDrop
+    {
+        get => autoStartOnDrop;
+        set
+        {
+            if (SetProperty(ref autoStartOnDrop, value))
+            {
+                AppSettings.AutoStartOnDrop = value;
+            }
+        }
     }
 
     public ObservableCollection<int> ParallelismOptions => parallelismOptions;
@@ -286,6 +301,12 @@ public partial class MainViewModel : BaseViewModel
         set => SetProperty(ref logText, value);
     }
 
+    public string WorkflowStatusText
+    {
+        get => workflowStatusText;
+        private set => SetProperty(ref workflowStatusText, value);
+    }
+
     public ConversionItem? SelectedItem
     {
         get => selectedItem;
@@ -376,6 +397,8 @@ public partial class MainViewModel : BaseViewModel
 
     public int QueueCount => Queue.Count;
 
+    public ObservableCollection<string> RecentOutputFormats => recentOutputFormats;
+
     public async Task InitializeAsync(XamlRoot? root)
     {
         if (initialized)
@@ -393,9 +416,11 @@ public partial class MainViewModel : BaseViewModel
         PandocPath = AppSettings.PandocPath ?? string.Empty;
         TemplatePath = AppSettings.TemplatePath ?? string.Empty;
         MaxParallelism = AppSettings.MaxParallelism;
+        AutoStartOnDrop = AppSettings.AutoStartOnDrop;
         LoadPresets();
         LoadRecentFiles();
         LoadRecentOutputDirectories();
+        LoadRecentOutputFormats();
         LoadRecentTemplates();
         UpdateQueueStats();
         if (!AppSettings.HasLaunchedBefore)
@@ -404,6 +429,7 @@ public partial class MainViewModel : BaseViewModel
         }
 
         await RefreshPandocAsync();
+        UpdateWorkflowStatusText();
     }
 
     [RelayCommand]
@@ -664,6 +690,17 @@ public partial class MainViewModel : BaseViewModel
         {
             TemplatePath = SelectedPreset.TemplatePath;
         }
+    }
+
+    [RelayCommand]
+    private void SetOutputFormat(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return;
+        }
+
+        SelectedOutputFormat = format;
     }
 
     private bool CanApplyPreset()
@@ -945,6 +982,7 @@ public partial class MainViewModel : BaseViewModel
         RetryFailedCommand.NotifyCanExecuteChanged();
         ClearCompletedCommand.NotifyCanExecuteChanged();
         UpdateQueueStats();
+        UpdateWorkflowStatusText();
     }
 
     private void OnQueueItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1257,6 +1295,7 @@ public partial class MainViewModel : BaseViewModel
     private void OnIsPandocReadyChanged(bool value)
     {
         StartConversionCommand.NotifyCanExecuteChanged();
+        UpdateWorkflowStatusText();
     }
 
     private void OnIsDownloadingChanged(bool value)
@@ -1280,6 +1319,7 @@ public partial class MainViewModel : BaseViewModel
         AppSettings.OutputDirectory = value;
         UpdateOutputPathsForPending();
         AddRecentOutputDirectory(value);
+        UpdateWorkflowStatusText();
     }
 
     private void OnAdditionalArgsChanged(string value)
@@ -1303,6 +1343,8 @@ public partial class MainViewModel : BaseViewModel
         }
 
         lastOutputFormat = value;
+        AddRecentOutputFormat(value);
+        UpdateWorkflowStatusText();
     }
 
     private void OnSelectedInputFormatChanged(string value)
@@ -1358,6 +1400,17 @@ public partial class MainViewModel : BaseViewModel
         OnPropertyChanged(nameof(QueueSummary));
         OnPropertyChanged(nameof(QueueResultSummary));
         OnPropertyChanged(nameof(QueueProgressText));
+    }
+
+    private void UpdateWorkflowStatusText()
+    {
+        var importText = Queue.Count == 0 ? "未导入文件" : $"已导入 {Queue.Count} 个文件";
+        var formatText = string.IsNullOrWhiteSpace(SelectedOutputFormat)
+            ? "待选择输出格式"
+            : $"输出格式 {SelectedOutputFormat}";
+        var outputText = string.IsNullOrWhiteSpace(OutputDirectory) ? "输出目录未设置" : "输出目录已设置";
+        var pandocText = IsPandocReady ? "Pandoc 已就绪" : "Pandoc 未就绪";
+        WorkflowStatusText = $"{importText} · {formatText} · {outputText} · {pandocText}";
     }
 
     private void LoadPresets()
@@ -1472,6 +1525,23 @@ public partial class MainViewModel : BaseViewModel
         }
     }
 
+    private void LoadRecentOutputFormats()
+    {
+        recentOutputFormats.Clear();
+        foreach (var format in AppSettings.RecentOutputFormats)
+        {
+            if (!string.IsNullOrWhiteSpace(format))
+            {
+                recentOutputFormats.Add(format);
+            }
+        }
+
+        if (recentOutputFormats.Count == 0 && !string.IsNullOrWhiteSpace(SelectedOutputFormat))
+        {
+            recentOutputFormats.Add(SelectedOutputFormat);
+        }
+    }
+
     private void LoadRecentTemplates()
     {
         recentTemplates.Clear();
@@ -1518,6 +1588,29 @@ public partial class MainViewModel : BaseViewModel
         }
 
         AppSettings.SetRecentOutputDirectories(recentOutputDirectories);
+    }
+
+    private void AddRecentOutputFormat(string format)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return;
+        }
+
+        var normalized = format.Trim();
+        var existing = recentOutputFormats.FirstOrDefault(item => item.Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            recentOutputFormats.Remove(existing);
+        }
+
+        recentOutputFormats.Insert(0, normalized);
+        while (recentOutputFormats.Count > 6)
+        {
+            recentOutputFormats.RemoveAt(recentOutputFormats.Count - 1);
+        }
+
+        AppSettings.SetRecentOutputFormats(recentOutputFormats);
     }
 
     private void AddRecentTemplate(string path)

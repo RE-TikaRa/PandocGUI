@@ -13,6 +13,18 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SvgImageSource x:Key="LogoImageSource" UriSource="ms-appx:///Assets/LOGO.svg" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SvgImageSource x:Key="LogoImageSource" UriSource="ms-appx:///Assets/LOGO_dark.svg" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <SvgImageSource x:Key="LogoImageSource" UriSource="ms-appx:///Assets/LOGO.svg" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <SvgImageSource x:Key="LogoImageSource" UriSource="ms-appx:///Assets/LOGO.svg" />
             <!-- Other app resources here -->
             <Color x:Key="Primary">#512BD4</Color>
 

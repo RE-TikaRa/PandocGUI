@@ -27,5 +27,10 @@ public sealed partial class ConvertPage : Page
         var items = await e.DataView.GetStorageItemsAsync();
         var paths = items.Select(item => item.Path);
         ViewModel.AddFilesFromPaths(paths);
+
+        if (ViewModel.AutoStartOnDrop && ViewModel.StartConversionCommand.CanExecute(null))
+        {
+            await ViewModel.StartConversionCommand.ExecuteAsync(null);
+        }
     }
 }

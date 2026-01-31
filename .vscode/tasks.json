@@ -1,0 +1,57 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"PandocGUI.sln",
+				"-c",
+				"Debug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build-x64",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"PandocGUI.sln",
+				"-c",
+				"Debug",
+				"-r",
+				"win-x64"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build-project-x64",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"PandocGUI.csproj",
+				"-c",
+				"Debug",
+				"-r",
+				"win-x64"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		}
+	]
+}

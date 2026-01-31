@@ -93,11 +93,28 @@ public static class AppSettings
         }
     }
 
+    public static bool AutoStartOnDrop
+    {
+        get => data.AutoStartOnDrop;
+        set
+        {
+            if (data.AutoStartOnDrop == value)
+            {
+                return;
+            }
+
+            data.AutoStartOnDrop = value;
+            Save();
+        }
+    }
+
     public static IReadOnlyList<OutputPreset> Presets => data.Presets;
 
     public static IReadOnlyList<string> RecentFiles => data.RecentFiles;
 
     public static IReadOnlyList<string> RecentOutputDirectories => data.RecentOutputDirectories;
+
+    public static IReadOnlyList<string> RecentOutputFormats => data.RecentOutputFormats;
 
     public static IReadOnlyList<string> RecentTemplates => data.RecentTemplates;
 
@@ -116,6 +133,12 @@ public static class AppSettings
     public static void SetRecentOutputDirectories(IEnumerable<string> directories)
     {
         data.RecentOutputDirectories = directories.ToList();
+        Save();
+    }
+
+    public static void SetRecentOutputFormats(IEnumerable<string> formats)
+    {
+        data.RecentOutputFormats = formats.ToList();
         Save();
     }
 
@@ -156,6 +179,7 @@ public static class AppSettings
             loaded.Presets ??= new List<OutputPreset>();
             loaded.RecentFiles ??= new List<string>();
             loaded.RecentOutputDirectories ??= new List<string>();
+            loaded.RecentOutputFormats ??= new List<string>();
             loaded.RecentTemplates ??= new List<string>();
             return loaded;
         }

@@ -44,8 +44,8 @@
             AlwaysShowHeader="True"
             SelectionChanged="OnNavigationSelectionChanged"
             SelectionFollowsFocus="Enabled">
-            <NavigationView.MenuItems>
-            <NavigationViewItem Content="主页" Tag="home">
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="首页" Tag="home">
                 <NavigationViewItem.Icon>
                     <SymbolIcon Symbol="Home" />
                 </NavigationViewItem.Icon>
@@ -55,32 +55,12 @@
                     <SymbolIcon Symbol="Switch" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="转换设置" Tag="convert-settings">
+            <NavigationViewItem Content="设置" Tag="settings">
                 <NavigationViewItem.Icon>
                     <SymbolIcon Symbol="Setting" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="预设管理" Tag="presets">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Favorite" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="最近项目" Tag="recent">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Clock" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="队列" Tag="queue">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Bullets" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-                <NavigationViewItem Content="设置" Tag="settings">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Setting" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </NavigationView.MenuItems>
+        </NavigationView.MenuItems>
             <NavigationView.Content>
                 <Frame x:Name="ContentFrame" />
             </NavigationView.Content>

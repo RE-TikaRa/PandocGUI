@@ -13,15 +13,16 @@ public partial class MainPage : Page
 
     public MainViewModel ViewModel => App.MainViewModel;
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
         App.MainWindow.ExtendsContentIntoTitleBar = true;
         App.MainWindow.SetTitleBar(AppTitleBar);
-        await ViewModel.InitializeAsync(XamlRoot);
         if (ContentFrame.CurrentSourcePageType is null)
         {
             NavigateToTag("home");
         }
+
+        _ = ViewModel.InitializeAsync(XamlRoot);
     }
 
     private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -36,10 +37,6 @@ public partial class MainPage : Page
         {
             "home" => typeof(HomePage),
             "convert" => typeof(ConvertPage),
-            "convert-settings" => typeof(ConvertSettingsPage),
-            "presets" => typeof(PresetsPage),
-            "recent" => typeof(RecentPage),
-            "queue" => typeof(QueuePage),
             "settings" => typeof(SettingsPage),
             _ => typeof(HomePage)
         };
@@ -64,10 +61,6 @@ public partial class MainPage : Page
         {
             "home" => typeof(HomePage),
             "convert" => typeof(ConvertPage),
-            "convert-settings" => typeof(ConvertSettingsPage),
-            "presets" => typeof(PresetsPage),
-            "recent" => typeof(RecentPage),
-            "queue" => typeof(QueuePage),
             "settings" => typeof(SettingsPage),
             _ => typeof(HomePage)
         };
